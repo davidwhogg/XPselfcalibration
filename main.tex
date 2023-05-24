@@ -1,0 +1,162 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper]{geometry}
+\usepackage{xcolor}
+\usepackage{amsmath, mathrsfs}
+
+\title{\bfseries
+A letter to \textsl{Gaia} DPAC CU5 regarding XP spectral extraction%
+\footnote{This document was written after a meeting with part of CU5 in Cambridge, UK on 2023 May 19. That meeting itself was part of the 2023 \textsl{Gaia XPloration} meeting hosted by the Institute of Astronomy, University of Cambridge.}}
+\author{David W. Hogg%
+\footnote{Affiliations: Center for Cosmology and Particle Physics, Department of Physics, New York University; Max-Planck-Institut f\"ur Astronomie, Heidelberg; Flatiron Institute, a division of the Simons Foundation. Also: Member of \textsl{Gaia} DPAC CU9.}}
+\date{May 2023}
+
+% typesetting
+\renewcommand{\paragraph}[1]{\medskip\par\noindent\textbf{#1}~---}
+\addtolength{\textheight}{5.00cm}
+\addtolength{\topmargin}{-1.00cm}
+\addtolength{\textwidth}{-2.00cm}
+\addtolength{\oddsidemargin}{1.00cm}
+\linespread{1.07}
+\pagestyle{myheadings}
+\markboth{}{\color{gray}\sffamily Hogg / A letter re XP spectral extraction}
+\sloppy\sloppypar\raggedbottom\frenchspacing
+
+\begin{document}
+
+\maketitle\thispagestyle{empty}
+
+\begin{abstract}\noindent
+    The purpose of this document is to rephrase the \textsl{Gaia} XP spectral self-calibration and extraction in new language, and make recommendations for the sharp bits.
+\end{abstract}
+
+\section{Problem setup in my language}
+
+We have many 60-pixel windows $n$, in each of which we have measured a 60-vector $y_n$ of counts or count rates.
+These 60-vectors $y_n$ constitute \emph{the data}.
+For now we assume that each of the windows $n$ contains significant amounts of intensity from one and only one star $m$.
+We might at some point need to think about the set (or maybe ordered list) $\mathscr{S}_m$, which is the set (or list) of all windows $n$ that contain star $m$ (and no other star).
+
+Each window $n$ has associated with it three pieces of meta-data or housekeeping data:
+The first is the identity $m$ of the star it contains.
+The second is a blob $\alpha_n$ of information about the details of where and when that window was read, including (at least) the CCD row number, the pixel column of that CCD row, which field of view (FOV) is in play, focus information (for that FOV), and information about any across-scan source motion that might affect dispersion or resolution.
+The third is a timing offset $\delta_n$, which gives (something like) the time difference between the reading of the fiducial corner of the window and the fiducial transit of the star.
+In terms of form, $m$ is an integer or database index, $\alpha_n$ is an unstructured blob of information, and $\delta_n$ is just one floating-point number, measured in (something like) seconds or pixels.
+
+The true (latent, unobserved) spectrum of this star $m$ in this window $n$ can be represented by a 55-vector $b_m$ of coefficients in one particular, God-given basis.
+We don't care much about the details of this basis, but you can think of the basis as being built of 55 linearly independent, continuous functions of a continuous coordinate $x$, which we will call the pseudo-wavelength.
+
+Before we start, here's an observation or assumption (restated effectively below):
+Imagine we had a very special, very perfect focal plane, such that the spectral dispersion (wavelength solution) and resolution do not depend in any way on any of the housekeeping data in the $\alpha_n$ blobs.
+\emph{This is not true!} We are just assuming it momentarily to make one point:
+In this magical case, every observed 60-vector datum $y_n$ could be written accurately as
+\begin{align}
+    y_n &= B(\delta_n)\cdot b_m + \mbox{noise} ~,\label{eq:B}
+\end{align}
+where $B(\delta_n)$ is a $60\times 55$ matrix created by evaluating the 55 God-given spectral basis functions at the 60 pixel locations, adjusting (correctly, of course!) for the timing offset $\delta_n$,
+the product is a standard matrix product,
+the vectors $y_n$ and $b_m$ are column vectors ($60\times 1$ and $55\times 1$ matrices, respectively),
+and the term ``$+\mbox{noise}$'' is intended to indicate that there are small offsets created by photon noise and other variabilities, but no systematic biases (in this magical, hypothetical world).
+That is, the spectral coefficients $b_m$ parameterize the appearance of the spectrum directly in the data, not some kind of calibrated or renormalized or deconvolved spectrum.
+Another way to say it is that \emph{the spectra we extract here will be attenuated, pixel-convolved, LSF-convolved effective spectra, extracted at the fundamental resolution and throughput of the device}.
+
+\section{Assumptions}
+
+\paragraph{No backgrounds or detector issues}
+We will assume that everything ``upstream'' in the \textsl{Gaia} pipelines is exactly correct and reliable, such that the data 60-vectors $y_n$ are not contaminated in any way by backgrounds, foregrounds, charge transfer issues, bias changes, or anything else that might violate the purely linear data model expressed in \eqref{eq:B}.
+It is straightforward to modify the model to account for small residual background issues; we will return to this below.
+
+\paragraph{No blends}
+We will assume that every window $n$ has significant intensity contributions from exactly one star, and one star only, and that star is known.
+This must be wrong in detail; it is possible but non-trivial to modify the model to account for blends and overlapping stars.
+
+\paragraph{Non-enormous variations in dispersion}
+Interestingly, the model (below) is so flexible, it will correct for (or extract naturally in the presence of) variations in the spectral dispersion and resolution, using the internal self-consistency to learn the changes.
+This will only be possible or stable in practice if the variations in the across-scan direction is not absurdly large.
+This assumption is safe for \textsl{Gaia}.
+
+\paragraph{Complete housekeeping data}
+We assume that everything we need to know about the spacecraft state, including focus and rotation changes, is encoded in the housekeeping data blobs $\alpha_n$.
+That is, the housekeeping data are sufficient to accurately predict the particular dispersion and LSF relevant to window $n$.
+
+\paragraph{Low-resolution, uncalibrated outputs}
+This assumption is implicitly stated above in \eqref{eq:B}:
+The extracted spectra are extracted as they appear in the data, with no spectral or pixel deconvolution, and no correction for instrumental sensitivity as a function of wavelength.
+This is what makes the extracted XP spectra so much fun.
+
+\paragraph{Appropriate basis}
+We will assume that the 55 God-given basis functions are chosen reasonably, have good support, and lead to stable numerical linear algebra.
+I'm not convinced that this assumption holds, especially for stars of unusual colors.
+
+\paragraph{Linearity}
+The expected count rate in the detector, in every pixel, is a linear function of the true spectrum of the star.
+This assumption is strong!
+But since pixel shifts and convolutions are linear operations, it leaves scope for almost everything we think is going on.
+Residual unsubtracted backgrounds or blends would violate this assumption.
+
+\paragraph{Gaussian noise with known variance}
+While it is not strictly necessary to have a good noise model---what happens below does not depend extremely strongly on the noise model---we will assume that the noise in the spectral pixels is Gaussian with approximately known variance in each pixel.
+This assumption will be wrong in detail for many reasons.
+This assumption becomes very wrong when the mean spectrum is being extracted for a highly variable star.
+We will return to this below.
+
+\section{Problems to solve}
+
+The sensitivity, dispersion, and LSF all vary as a function of focal-plane (across-scan) position, and also as a function of FOV, focus settings, and spacecraft angular velocity.
+By assumption, all of this information is in the housekeeping blob $\alpha_n$ for each window $n$.
+The fundamental model for the XP spectral data---for both me and for the CU5 team---is (in my language)
+\begin{align}
+    y_n &= A(\alpha_n)\cdot B(\delta_n)\cdot b_m + \mbox{noise} ~,\label{eq:A}
+\end{align}
+where the projection operator $A(\alpha_n)$ is a $60\times 60$ matrix that is always and everywhere somehow ``close to'' the identity matrix.
+It is also somehow ``smoothly varying'' with respect to sensible housekeeping parameters; in other words, windows nearby in the space of housekeeping data $\alpha_n$ should have similar projection operators $A(\alpha_n)$.
+
+In the context of this model, as I see it, there are three high-level problems to solve here, which are all very closely related:
+
+\paragraph{Calibrate}
+Learn the projectors or convolution operators that project the stellar spectra into the pixels, as a function of the housekeeping data blob $\alpha$; that is, as a function of detector position, focus, FOV, and so on.
+That is, learn an estimate $\hat{A}(\alpha)$ of the matrix-valued function $A(\alpha)$.
+
+\paragraph{Extract mean spectra}
+Deliver an estimate $\hat{b}_m$ of the spectral coefficient 55-vector representing the mean spectrum for (every) star $m$, by fitting to all the windows $m\in\mathscr{S}_m$. Also deliver some kind of uncertainty estimate on this.
+
+\paragraph{Extract epoch spectra}
+Deliver (in some useable form) an estimate of every individual visit spectrum $\hat{b}_n$, one per telemetered window $n$ (that meets criteria). Also deliver some kind of uncertainty estimate.
+
+\medskip
+
+We ought to solve all three of these problems (in my very strongly held opinion) by the optimization of a justifiable likelihood function, or (perhaps) a lightly regularized objective that is very close to a likelihood function.
+The ``$+\mbox{noise}$'' in \eqref{eq:A} effectively implies a simple Gaussian likelihood function, which is
+\begin{align}
+    \ln\mathscr{L} &= \sum_n \ln\mathscr{L}_n \\
+    \ln\mathscr{L}_n &= -\frac{1}{2}\,\chi^2_n - \frac{1}{2}\,\ln\det(2\pi\,C_n)\\
+    \chi^2_n &= \Delta_n^\top\cdot C_n^{-1}\cdot \Delta_n \\
+    \Delta_n &= y_n - A(\alpha_n)\cdot B(\delta_n)\cdot b_m ~,
+\end{align}
+where we have defined a per-window chi-squared value $\chi^2_n$,
+we have defined a single-window 60-vector residual $\Delta_n$,
+and $C_n$ is a $60\times 60$ noise covariance tensor for window $n$, perhaps quite accurately diagonal.
+
+Related to the three high-level problems stated above, I see many inter-related technical issues that are likely to arise:
+
+\paragraph{Choice or control of the fiducial system}
+
+\paragraph{Parameterization of the projection operator function}
+
+\paragraph{Exact and near-exact degeneracies}
+
+\paragraph{Stability of inference}
+
+\section{Conjectures and suggestions}
+
+HOGG: Explain how CU5 parameterizes the projection operators. What would I do instead?
+
+HOGG: How to control the fiducial system. I recommend making an explicit choice and enforcing it.
+
+HOGG: How to break the near degeneracies. Why it is necessary to break them.
+
+HOGG: How to stabilize extraction 
+
+HOGG: Explain the severe degeneracies.
+
+\end{document}
