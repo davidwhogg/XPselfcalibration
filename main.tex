@@ -56,7 +56,7 @@ In this magical case, every observed 60-vector datum $y_n$ could be written accu
 \begin{align}
     y_n &= B(\delta_n)\cdot b_m + \mbox{noise} ~,\label{eq:B}
 \end{align}
-where $B(\delta_n)$ is a $60\times 55$ matrix created by evaluating the 55 God-given spectral basis functions at the 60 pixel locations, adjusting (correctly, of course!) for the timing offset $\delta_n$,
+where $B(\delta_n)$ is a $60\times 55$ design matrix created by evaluating the 55 God-given spectral basis functions at the 60 pixel locations, adjusting (correctly, of course!) for the timing offset $\delta_n$,
 the product is a standard matrix product,
 the vectors $y_n$ and $b_m$ are column vectors ($60\times 1$ and $55\times 1$ matrices, respectively),
 and the term ``$+\mbox{noise}$'' is intended to indicate that there are small offsets created by photon noise and other variabilities, but no systematic biases (in this magical, hypothetical world).
@@ -74,7 +74,7 @@ We will assume that every window $n$ has significant intensity contributions fro
 This must be wrong in detail; it is possible but non-trivial to modify the model to account for blends and overlapping stars.
 
 \paragraph{Non-enormous variations in dispersion}
-Interestingly, the model (below) is so flexible, it will correct for (or extract naturally in the presence of) variations in the spectral dispersion and resolution, using the internal self-consistency to learn the changes.
+Interestingly, the model (below) is so flexible, it will correct for (or extract internally self-consistent spectra in the presence of) variations in the spectral dispersion and resolution, using the internal self-consistency to learn the changes.
 This will only be possible or stable in practice if the variations in the across-scan direction is not absurdly large.
 This assumption is safe for \textsl{Gaia}.
 
@@ -110,8 +110,8 @@ The fundamental model for the XP spectral data---for both me and for the CU5 tea
 \begin{align}
     y_n &= A(\alpha_n)\cdot B(\delta_n)\cdot b_m + \mbox{noise} ~,\label{eq:A}
 \end{align}
-where the projection operator $A(\alpha_n)$ is a $60\times 60$ matrix that is always and everywhere somehow ``close to'' the identity matrix.
-It is also somehow ``smoothly varying'' with respect to sensible housekeeping parameters; in other words, windows nearby in the space of housekeeping data $\alpha_n$ should have similar projection operators $A(\alpha_n)$.
+where the projection operator $A(\alpha_n)$ is a $60\times 60$ matrix that is always and everywhere somehow ``close to'' the identity matrix, and $B(\delta_n)$ is the same $60\times 55$ design matrix that appears above in \eqref{eq:B}.
+The projection operator function $A(\alpha)$ is close to the identity matrix, but it is also somehow ``smoothly varying'' with respect to sensible housekeeping parameters; in other words, windows nearby in the space of housekeeping data $\alpha_n$ should have similar projection operators $A(\alpha_n)$.
 
 In the context of this model, as I see it, there are three high-level problems to solve here, which are all very closely related:
 
@@ -186,9 +186,16 @@ Polynomials have some bad properties for problems like this; I recommend replaci
 The fundamental issue is that polynomials are not translation-invariant in their properties; they go wild at the edges.
 This both distorts the results at the edges of the domain, and also makes the data at the edges of the domain unfairly powerful in setting the polynomial coefficients.
 
-HOGG Fourier; 2L domain.
+The first recommended replacement for polynomials is sines and cosines.
+The key idea here is that these are translationally invariant and easily computed.
+The one detail is that, if you have a domain that goes from $0$ to $L$, you should use angular wave numbers $k$ that are integer multiples of $\pi/L$ not $2\pi/L$.
+The reason is that if you use $2\pi/L$ you are assuming that your functions are periodic on your domain, which is not generally true.
+If you use $\pi/L$ you maintain linear independence but make no such assumption.
 
-HOGG Spline control points; differentiation.
+The second recommended replacement is a cubic spline with chosen knots.
+This is a beautiful and flexible solution!
+However, the construction of design matrices analogous to those used in polynomial fitting requires that you have a differentiated spline code, and these are somewhat hard to come by.
+So I usually prefer sines and cosines to splines with knots.
 
 \paragraph{How to parameterize the projection operator function}
 The projection operator function $A(\alpha)$ in principle has a huge number of degrees of freedom; how to limit them?
