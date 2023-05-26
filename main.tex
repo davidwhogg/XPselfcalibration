@@ -38,7 +38,7 @@ A letter to \textsl{Gaia} DPAC CU5 regarding XP spectral extraction%
 We have many 60-pixel windows $n$, in each of which we have measured a 60-vector $y_n$ of counts or count rates.
 These 60-vectors $y_n$ constitute \emph{the data}.
 For now we assume that each of the windows $n$ contains significant amounts of intensity from one and only one star $m$.
-We might at some point need to think about the set (or maybe ordered list) $\mathscr{S}_m$, which is the set (or list) of all windows $n$ that contain star $m$ (and no other star).
+We will need to think below also about the set (or maybe ordered list) $\mathscr{S}_m$, which is the set (or list) of all windows $n$ that contain star $m$ (and no other star).
 
 Each window $n$ has associated with it three pieces of meta-data or housekeeping data:
 The first is the identity $m$ of the star it contains.
@@ -80,7 +80,7 @@ This assumption is safe for \textsl{Gaia}.
 
 \paragraph{Complete housekeeping data}
 We assume that everything we need to know about the spacecraft state, including focus and rotation changes, is encoded in the housekeeping data blobs $\alpha_n$.
-That is, the housekeeping data are sufficient to accurately predict the particular dispersion and LSF relevant to window $n$.
+That is, the housekeeping data $\alpha_n$ are sufficient to accurately predict the particular dispersion and LSF relevant to window $n$, for every window $n$.
 
 \paragraph{Low-resolution, uncalibrated outputs}
 This assumption is implicitly stated above in \eqref{eq:B}:
@@ -95,13 +95,12 @@ I'm not convinced that this assumption holds, especially for stars of unusual co
 The expected count rate in the detector, in every pixel, is a linear function of the true spectrum of the star.
 This assumption is strong!
 But since pixel shifts and convolutions are linear operations, it leaves scope for almost everything we think is going on.
-Residual unsubtracted backgrounds or blends would violate this assumption.
+Residual unsubtracted backgrounds or blends would violate this assumption, as would detector saturation or nonlinearity, and probably charge-transfer inefficiency.
 
 \paragraph{Gaussian noise with known variance}
 While it is not strictly necessary to have a good noise model---what happens below does not depend extremely strongly on the noise model---we will assume that the noise in the spectral pixels is Gaussian with approximately known variance in each pixel.
-This assumption will be wrong in detail for many reasons.
-This assumption becomes very wrong when the mean spectrum is being extracted for a highly variable star.
-We will return to this below.
+This assumption will be wrong in detail for many reasons, including cosmic rays, residual sky, and overlapping but unidentified fainter sources.
+This assumption also becomes very wrong when the mean spectrum is being extracted for a highly variable star.
 
 \section{Problems to solve}
 
@@ -157,33 +156,58 @@ for some domain of integration $\mathscr{D}$.
 \paragraph{Parameterization of the projection operator function}
 The projection operator function $A(\alpha)$ is expected to vary smoothly with respect to continuous parameters such as across-scan position and telescope focus.
 It is also likely that it varies smoothly with pseudo-wavelength $x$ in the sense that adjacent rows of the matrix returned by $A(\alpha)$ should look similar except for a shift left or right.
-Smoothness of these kinds could be enforced by explicitly making the parameterization of the function (in terms of polynomials or splines, say), or by adding regularization to a more flexible (non-parametric, even) model.
+Smoothness of these kinds could be enforced by explicitly making the parameterization of the function smooth (with polynomials or splines, say), or by adding regularization to a more flexible (non-parametric, even) model.
 
 \paragraph{Exact and near-exact degeneracies}
 The expression \eqref{eq:A} contains a panoply of degeneracies, many of them exact.
 The fact that the projection operator $A(\alpha)$ has (in principle) 3600 free parameters while the extracted spectrum has only 55 free parameters means that there will be an enormous degeneracy, even with strong constraints on how $A(\alpha)$ can vary with $\alpha$ and pixel number.
 Concretely, for example, the $A(\alpha)$ can be scaled up by a factor, and $b$ down by a factor to keep the prediction for $y$ unchanged.
 For another example, the projector can get sharper (scaled up in some parts of Fourier space) and the spectrum can get smoother (scaled down in those same parts of Fourier space), to keep the prediction for $y$ unchanged.
-Naively one might expect that the choice of the fiducial system will break these degeneracies, since it sets the value of $A(\alpha_\ast)$, but that isn't true \emph{in practice} when most of the windows $n\in\mathscr{S}_m$ are not near the fiducial system.
+Naively one might expect that the choice of the fiducial system will break these degeneracies, since it sets the value of $A(\alpha_\ast)$, but that isn't necessarily true \emph{in practice} when most of the windows $n\in\mathscr{S}_m$ are not near the fiducial system.
 
 \paragraph{Stability of inference}
 When individual-visit spectrum estimates $\hat{b}_n$ are made, they will probably involve something like the optimization of a 55-parameter likelihood function constrained by only 60 data points in window $n$, or maybe the pseudo-inverse of a $60\times 55$ matrix that is something like the product $A(\alpha_n)\cdot B(\delta_n)$.
 This operation is likely to be very ill-conditioned, especially for stars that are faint or very red (say).
-The mean spectrum estimates $\hat{b}_m$ ought to be much better conditioned, because there are many windows constraining each mean spectrum, but even among these there will likely be some badly behaved cases.
+The mean spectrum estimates $\hat{b}_m$ ought to be much better conditioned than the individual-epoch estimates $\hat{b}_n$, because there are many windows constraining each mean spectrum.
+However, even among the mean-spectrum estimates there will likely be some badly behaved cases.
 
 \section{Conjectures and suggestions}
 
 \paragraph{Maximum likelihood with light regularization}
 My primary (unsolicited) recommendation is that the estimates $\hat{A}(\alpha), \hat{b}_m, \hat{b}_n$ all be maximum-likelihood estimates, found by optimizing the likelihood function laid out in \eqref{eq:lf1} through \eqref{eq:lf2}, constrained by the data from all windows $n$ (perhaps subject to quality cuts).
 And, indeed, this is what I believe that CU5 is doing right now.
-Alternatively, they could be found by optimizing a lightly regularized version of the likelihood, but I would recommend that any regularization primarily be aimed at breaking degeneracies, and not strongly constraining the solution.
-Finally, if there \emph{are} strong regularizations to be applied, those strong regularizations should be only on the properties of the projection operator function $A(\alpha)$, because this is the part of the problem that we least care about (from an astronomical-research perspective), and thus least distort downstream research conclusions.
+
+Alternatively, the estimates $\hat{A}(\alpha), \hat{b}_m, \hat{b}_n$ could be found by optimizing a lightly regularized version of the likelihood, but I would recommend that any regularization primarily be aimed at breaking degeneracies, and not strongly constraining the solution.
+Finally, if there \emph{are} strong regularizations to be applied, those strong regularizations should be only on the properties of the projection operator function $A(\alpha)$, because this is the part of the problem that we least care about (from an astronomical-research perspective), and thus least distorts downstream research conclusions.
+
+\paragraph{Cubics and other polynomials}
+The XP pipeline currently involves a few (maybe many) cubic polynomials.
+Polynomials have some bad properties for problems like this; I recommend replacing them with a different---but still linear---basis.
+The fundamental issue is that polynomials are not translation-invariant in their properties; they go wild at the edges.
+This both distorts the results at the edges of the domain, and also makes the data at the edges of the domain unfairly powerful in setting the polynomial coefficients.
+
+HOGG Fourier; 2L domain.
+
+HOGG Spline control points; differentiation.
 
 \paragraph{How to parameterize the projection operator function}
-The function $A(\alpha)$ in principle has a huge number of degrees of freedom; how to limit them?
+The projection operator function $A(\alpha)$ in principle has a huge number of degrees of freedom; how to limit them?
 Right now I believe that CU5 makes the projection matrix 5-diagonal, with the matrix values restricted to be cubic functions of across-scan position within each CCD row.
 I believe that they also require that the matrix entries be smooth with respect to the matrix row number (or window along-scan pixel number).
-Instead of this, I would.... HOGGG?
+Instead of this, I would consider making some kind of expansion, such that the matrix $A(\alpha)$ can be written in terms of a sum of (small, we hope) adjustments away from the $60\times 60$ identity matrix $\mathbb{I}$.
+This would look like
+\begin{align}
+    A(\alpha) = \mathbb{I} + \sum_{j=1}^J a_j(\alpha)\,A_j~,
+\end{align}
+where the (small) amplitudes $a_j(\alpha)$ vary (smoothly if you like) with the housekeeping data $\alpha$ and the $A_j$ are a set of linearly independent $60\times 60$ matrices.
+
+I love this idea!
+However, I have to admit that I have absolutely no idea how to set the $A_j$ matrices.
+One option would be to learn them simultaneously with the amplitudes $a_j$ and also the spectra.
+Another option would be to make a God-given basis of $A_j$ matrices (analogous to the $B(\delta)$ basis), where that God-given basis is designed to capture the observed variation in the $A(\alpha_n)$ matrices that have been inferred from the \textsl{Gaia} DR3 XP data extraction.
+
+My intuition is that this kind of expansion for the projection operators is a much better way to control the complexity than hard-setting the matrices to be 5-diagonal.
+I have a further (weaker) intuition that if this expansion was built well, smoothness might not need to be enforced as strongly in the parameterization of the amplitudes $a_j(\alpha)$ as it is currently in the parameterization of the 5-diagonal setup.
 
 \paragraph{Controlling the fiducial system}
 My current understanding is that the CU5 system intends for the fiducial system to be somehow the ``mean'' system.
@@ -200,10 +224,7 @@ The reason that I think the mean system will be more robust is that it gets cont
 As noted above, there are many exact and near-exact degeneracies in this problem.
 The thing I'm confused about is: If you set the fiducial system explicitly, do you break all of them?
 I somehow feel like you don't!
-But then I can't find any simple degeneracies that survive.
-
-\paragraph{Stably estimating the epoch spectra}
-HOGG: How to stabilize extraction for both mean (ie, don't) and individual-visit spectra.
+But then I can't find any simple degeneracies that survive (at least not by pure thought).
 
 \paragraph{Are there residual background issues?}
 If there are small unmodeled background contributions to some windows, it probably wouldn't be expensive or biased to just straight-up estimate them simultaneously with the spectral vectors $\hat{b}_m$.
@@ -214,24 +235,58 @@ This would look like adding a constant term to \eqref{eq:lf2} to make it
 where $s_n$ is a ``sky level'' for window $n$.
 In this model, there is one mean spectrum $b_m$ for all windows $n\in\mathscr{S}_m$, but there is a separate sky $s_n$ for each of those windows.
 Because the constant sky is such a rigid model, and because the basis functions drop near to zero at the window edges, the new inference for the $\hat{b}_m$ found while also simultaneously estimating all the $s_n$ values would still be very well behaved.
-It might require a small restructuring of the code, because the star $m$ would now have not 55 parameters, but instead $55+N$, where $N$ is the size of the set $\mathscr{S}_m$.
+It might require a small restructuring of the code, because the star $m$ would now have not 55 parameters, but instead $55+N_m$, where $N_m$ is the size of the set $\mathscr{S}_m$.
+
+\paragraph{Stably estimating the individual epoch spectra}
+Let's start with some context: The mean spectrum estimate $\hat{b}_m$ for star $m$ is found by maximizing the likelihood---the probability of the data---with respect to the stellar spectrum $b_m$.
+This will look something like
+\begin{align}
+  \hat{b}_m &\leftarrow [X_m^\top\cdot C_m^{-1}\cdot X_m]^{-1}\cdot X_m^\top\cdot C_m^{-1}\cdot Y_m ~,
+\end{align}
+where $X_m$ is a big $60\,N_m\times 55$ design matrix made by stacking up all the products $A(\alpha_n)\cdot B(\delta_n)$ for all $n\in\mathscr{S}_m$,
+$N_m$ is the number of relevant windows or the size of the set $\mathscr{S}_m$,
+$C_m$ is a big diagonal $60\,N_m\times 60\,N_m$ covariance matrix made by clicking together all the individually diagonal covariance matrices $C_n$,
+and $Y_m$ is a big $60\,N_m\times 1$ column vector made by stacking all the data vectors $y_n$.
+
+Note that the estimate $\hat{b}_m$ should be made without ever explicitly constructing $C_m$, because that covariance matrix is almost entirely zeros.
+It should also be made without ever actually running the linear algebra \texttt{inv()} function.
+It is way better to use the function \texttt{solve()} or even better \texttt{lstsq()}, where in the latter case you can set the condition number to eliminate very-near-zero eigenvalues.
+
+If you want to estimate the individual epoch spectra $\hat{b}_n$---but see below where \emph{I recommend that you never estimate these}---the inference looks similar; it is
+\begin{align}
+  \hat{b}_n &\leftarrow [X_n^\top\cdot C_n^{-1}\cdot X_n]^{-1}\cdot X_n^\top\cdot C_n^{-1}\cdot Y_n\\
+  X_n &= A(\alpha_n)\cdot B(\delta_n)~.
+\end{align}
+In principle everything is just the same.
+The only issue is that this inference will be very ill-conditioned; some eigenvalues of the matrix to be inverted will be very close to zero.
+One option is to regularize this inversion, which is equivalent to adding some kind of prior in the spectral space.
+Another is to explicitly fix low eigenvalues, by using the \texttt{lstsq()} instead of the \texttt{solve()} operator.
+This also is equivalent to adding some kind of prior, but without knowing what that prior is!
+I don't love either option here, because stability of inference will come at the cost of bias, and astronomers hate bias.
+All this motivates my final, radical suggestion, below.
 
 \paragraph{Don't estimate the epoch spectra at all}
-Here's my most radical suggestion: Instead of providing an estimate $\hat{b}_n$ for every window $n$---each of which would naturally be produced by an inference involving a poorly conditioned matrix pseudo-inverse or \texttt{lstsq} operation---provide instead the \emph{inputs to that inference}.
-That is, release the epoch spectra by releasing the $y_n$ and an interface to generate the projection operators $\hat{A}(\alpha_n)$ appropriate for each of those epoch spectra.
+Here's my most radical suggestion: Instead of providing an estimate $\hat{b}_n$ for every window $n$---each of which would naturally be produced by an inference involving a poorly conditioned matrix pseudo-inverse or \texttt{lstsq()} operation---provide instead the \emph{inputs to that inference}.
+That is, release the epoch spectra by releasing the raw data 60-vectors $y_n$ of counts and also release an interface to generate the projection operators $\hat{A}(\alpha_n)$ appropriate for each of those raw data vectors.
+
 Is this dereliction of duty? No! Provided that the project provides a usable interface for performing inferences or operations with the epoch spectra.
 For example: Imagine that a star flares. This flare can be found by comparing each epoch datum $y_n$ for $n\in\mathscr{S}_m$ to the synthesis from the mean spectrum estimate $\hat{b}_m$:
 \begin{align}
-    \hat{Delta}_n = y_n - \hat{A}(\alpha_n)\cdot B(\delta_n)\cdot \hat{b}_m ~,
+    \hat{\Delta}_n = y_n - \hat{A}(\alpha_n)\cdot B(\delta_n)\cdot \hat{b}_m ~,
 \end{align}
 where (in my imagination), the operators $\hat{A}(\alpha_n)$ and $B(\delta_n)$ will be provided by a Gaia-hosted or Gaia-built interface similar to \texttt{GaiaXPy},
-and the $\hat{Delta}_n$ gets a hat because it is an estimate of the residual at the epoch.
+and the $\hat{\Delta}_n$ gets a hat because it is an estimate of the residual at the epoch.
 For another: Imagine that there is a periodic variation with a period $P=2\pi/\omega$.
 The (complex) varying spectral component $b'_m$ can be estimated with something like the likelihood function \eqref{eq:lf1} through \eqref{eq:lf2} but with \eqref{eq:lf2} modified to
 \begin{align}
     \Delta_n &= y_n - \hat{A}(\alpha_n)\cdot B(\delta_n)\cdot [b_m + b'_m\,\exp{i\,\omega\,t_n}] ~,
 \end{align}
-where we have used the window times $t_n$ explicitly here and taken the real part implicitly.
+where we have used the barycentric time $t_n$ for each window $n$ explicitly here and taken the real part implicitly.
 Once again, we assume that the operators $\hat{A}(\alpha_n)$ and $B(\delta_n)$ will be provided by a Gaia-hosted or Gaia-built interface.
+My point is that even if the individual-epoch $\hat{b}_n$ estimation is unstable, the estimation of flares or periodic spectral variations $b'_m$ will not be unstable.
+\emph{It is better to provide the tools to do stable inferences than it is to publish the results of unstable inferences.}
+
+If the project switched from the goal of producing spectral estimates $\hat{b}_n$ for each window $n$ to releasing the raw data $y_n$ and the operators $A(\alpha_n)$ and $B(\delta_n)$, then it would make sense to build some tutorials and documentation to demonstrate to the community how to use these data products.
+I would be very willing to help make, write, and test such tutorials and documentation.
 
 \end{document}
