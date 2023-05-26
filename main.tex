@@ -2,11 +2,11 @@
 \usepackage[utf8]{inputenc}
 \usepackage[a4paper]{geometry}
 \usepackage{xcolor}
-\usepackage{amsmath, mathrsfs}
+\usepackage{amsmath, amsfonts, mathrsfs}
 
 \title{\bfseries
 A letter to \textsl{Gaia} DPAC CU5 regarding XP spectral extraction%
-\footnote{This document was written after a meeting with part of CU5 in Cambridge, UK on 2023 May 19. That meeting itself was part of the 2023 \textsl{Gaia XPloration} meeting hosted by the Institute of Astronomy, University of Cambridge.}}
+\footnote{This document was written after a meeting with Francesca di~Angeli, Dafydd Wyn Evans, Giorgia Busso, and Marco Riello (all \textsl{Gaia} CU5) in Cambridge, UK on 2023 May 19. That meeting itself was part of the 2023 \textsl{Gaia XPloration} meeting hosted by the Institute of Astronomy, University of Cambridge.}}
 \author{David W. Hogg%
 \footnote{Affiliations: Center for Cosmology and Particle Physics, Department of Physics, New York University; Max-Planck-Institut f\"ur Astronomie, Heidelberg; Flatiron Institute, a division of the Simons Foundation. Also: Member of \textsl{Gaia} DPAC CU9.}}
 \date{May 2023}
@@ -21,6 +21,9 @@ A letter to \textsl{Gaia} DPAC CU5 regarding XP spectral extraction%
 \pagestyle{myheadings}
 \markboth{}{\color{gray}\sffamily Hogg / A letter re XP spectral extraction}
 \sloppy\sloppypar\raggedbottom\frenchspacing
+
+% mathematics
+\newcommand{\dd}{\mathrm{d}}
 
 \begin{document}
 
@@ -128,10 +131,10 @@ Deliver (in some useable form) an estimate of every individual visit spectrum $\
 We ought to solve all three of these problems (in my very strongly held opinion) by the optimization of a justifiable likelihood function, or (perhaps) a lightly regularized objective that is very close to a likelihood function.
 The ``$+\mbox{noise}$'' in \eqref{eq:A} effectively implies a simple Gaussian likelihood function, which is
 \begin{align}
-    \ln\mathscr{L} &= \sum_n \ln\mathscr{L}_n \\
+    \ln\mathscr{L} &= \sum_n \ln\mathscr{L}_n \label{eq:lf1}\\
     \ln\mathscr{L}_n &= -\frac{1}{2}\,\chi^2_n - \frac{1}{2}\,\ln\det(2\pi\,C_n)\\
     \chi^2_n &= \Delta_n^\top\cdot C_n^{-1}\cdot \Delta_n \\
-    \Delta_n &= y_n - A(\alpha_n)\cdot B(\delta_n)\cdot b_m ~,
+    \Delta_n &= y_n - A(\alpha_n)\cdot B(\delta_n)\cdot b_m ~,\label{eq:lf2}
 \end{align}
 where we have defined a per-window chi-squared value $\chi^2_n$,
 we have defined a single-window 60-vector residual $\Delta_n$,
@@ -140,23 +143,95 @@ and $C_n$ is a $60\times 60$ noise covariance tensor for window $n$, perhaps qui
 Related to the three high-level problems stated above, I see many inter-related technical issues that are likely to arise:
 
 \paragraph{Choice or control of the fiducial system}
+The extracted spectra are supposed to look like the spectra in the data; that is, they are supposed to be at XP resolution and dispersion, with a shape that represents the system throughput.
+Since throughput, dispersion, and resolution vary with across-scan location (and FOV and focus and so on), the question arises:
+What is the fiducial throughput, resolution, and dispersion at which the spectra are extracted?
+This question boils down to:
+Where (if anywhere) in the device or dataset is the projection operator $A(\alpha)$ equal to the $60\times 60$ identity matrix $\mathbb{I}$?
+It could be that there is a fiducial setting of the housekeeping data $\alpha_\ast$ such that $A(\alpha_\ast)=\mathbb{I}$, or it could be that some average or mean instrument has
+\begin{align}
+    \left[\int_\mathscr{D} \dd\alpha\right]^{-1}\,\displaystyle\int_\mathscr{D} A(\alpha)\,\dd\alpha  &= \mathbb{I} ~,\label{eq:meanA}
+\end{align}
+for some domain of integration $\mathscr{D}$.
 
 \paragraph{Parameterization of the projection operator function}
+The projection operator function $A(\alpha)$ is expected to vary smoothly with respect to continuous parameters such as across-scan position and telescope focus.
+It is also likely that it varies smoothly with pseudo-wavelength $x$ in the sense that adjacent rows of the matrix returned by $A(\alpha)$ should look similar except for a shift left or right.
+Smoothness of these kinds could be enforced by explicitly making the parameterization of the function (in terms of polynomials or splines, say), or by adding regularization to a more flexible (non-parametric, even) model.
 
 \paragraph{Exact and near-exact degeneracies}
+The expression \eqref{eq:A} contains a panoply of degeneracies, many of them exact.
+The fact that the projection operator $A(\alpha)$ has (in principle) 3600 free parameters while the extracted spectrum has only 55 free parameters means that there will be an enormous degeneracy, even with strong constraints on how $A(\alpha)$ can vary with $\alpha$ and pixel number.
+Concretely, for example, the $A(\alpha)$ can be scaled up by a factor, and $b$ down by a factor to keep the prediction for $y$ unchanged.
+For another example, the projector can get sharper (scaled up in some parts of Fourier space) and the spectrum can get smoother (scaled down in those same parts of Fourier space), to keep the prediction for $y$ unchanged.
+Naively one might expect that the choice of the fiducial system will break these degeneracies, since it sets the value of $A(\alpha_\ast)$, but that isn't true \emph{in practice} when most of the windows $n\in\mathscr{S}_m$ are not near the fiducial system.
 
 \paragraph{Stability of inference}
+When individual-visit spectrum estimates $\hat{b}_n$ are made, they will probably involve something like the optimization of a 55-parameter likelihood function constrained by only 60 data points in window $n$, or maybe the pseudo-inverse of a $60\times 55$ matrix that is something like the product $A(\alpha_n)\cdot B(\delta_n)$.
+This operation is likely to be very ill-conditioned, especially for stars that are faint or very red (say).
+The mean spectrum estimates $\hat{b}_m$ ought to be much better conditioned, because there are many windows constraining each mean spectrum, but even among these there will likely be some badly behaved cases.
 
 \section{Conjectures and suggestions}
 
-HOGG: Explain how CU5 parameterizes the projection operators. What would I do instead?
+\paragraph{Maximum likelihood with light regularization}
+My primary (unsolicited) recommendation is that the estimates $\hat{A}(\alpha), \hat{b}_m, \hat{b}_n$ all be maximum-likelihood estimates, found by optimizing the likelihood function laid out in \eqref{eq:lf1} through \eqref{eq:lf2}, constrained by the data from all windows $n$ (perhaps subject to quality cuts).
+And, indeed, this is what I believe that CU5 is doing right now.
+Alternatively, they could be found by optimizing a lightly regularized version of the likelihood, but I would recommend that any regularization primarily be aimed at breaking degeneracies, and not strongly constraining the solution.
+Finally, if there \emph{are} strong regularizations to be applied, those strong regularizations should be only on the properties of the projection operator function $A(\alpha)$, because this is the part of the problem that we least care about (from an astronomical-research perspective), and thus least distort downstream research conclusions.
 
-HOGG: How to control the fiducial system. I recommend making an explicit choice and enforcing it.
+\paragraph{How to parameterize the projection operator function}
+The function $A(\alpha)$ in principle has a huge number of degrees of freedom; how to limit them?
+Right now I believe that CU5 makes the projection matrix 5-diagonal, with the matrix values restricted to be cubic functions of across-scan position within each CCD row.
+I believe that they also require that the matrix entries be smooth with respect to the matrix row number (or window along-scan pixel number).
+Instead of this, I would.... HOGGG?
 
-HOGG: How to break the near degeneracies. Why it is necessary to break them.
+\paragraph{Controlling the fiducial system}
+My current understanding is that the CU5 system intends for the fiducial system to be somehow the ``mean'' system.
+But I have a feeling that this is a hope for the code, and not an explicit requirement put on the code.
+If you want to require this, you could add a regularization penalty or explicit hard constraint on the optimization that enforces that the average (mean or median even) of $A(\alpha_n)$ over some set of windows $n$ (maybe all of them) is exactly the $60\times 60$ identity matrix $\mathbb{I}$.
+Alternatively the system could constrain a constraint or regularization that forces $A(\alpha_\ast)=\mathbb{I}$ for some particular window location and spacecraft state $\alpha_\ast$.
+I have two intuitions here.
+The first is that it is important to be explicit about where and how the fiducial system is defined and force the optimization to respect that choice.
+The second is that it will be more robust to set the fiducial system with some kind of average than by setting it to a fiducial point.
+The average could be a made-up mean integral like \eqref{eq:meanA} or it could be the empirical average over the actual windows.
+The reason that I think the mean system will be more robust is that it gets contributions from many windows, and not just windows in a rare slice of the focal plane.
 
-HOGG: How to stabilize extraction 
+\paragraph{Degeneracies}
+As noted above, there are many exact and near-exact degeneracies in this problem.
+The thing I'm confused about is: If you set the fiducial system explicitly, do you break all of them?
+I somehow feel like you don't!
+But then I can't find any simple degeneracies that survive.
 
-HOGG: Explain the severe degeneracies.
+\paragraph{Stably estimating the epoch spectra}
+HOGG: How to stabilize extraction for both mean (ie, don't) and individual-visit spectra.
+
+\paragraph{Are there residual background issues?}
+If there are small unmodeled background contributions to some windows, it probably wouldn't be expensive or biased to just straight-up estimate them simultaneously with the spectral vectors $\hat{b}_m$.
+This would look like adding a constant term to \eqref{eq:lf2} to make it
+\begin{align}
+    \Delta_n &= y_n - A(\alpha_n)\cdot B(\delta_n)\cdot b_m - s_n~,
+\end{align}
+where $s_n$ is a ``sky level'' for window $n$.
+In this model, there is one mean spectrum $b_m$ for all windows $n\in\mathscr{S}_m$, but there is a separate sky $s_n$ for each of those windows.
+Because the constant sky is such a rigid model, and because the basis functions drop near to zero at the window edges, the new inference for the $\hat{b}_m$ found while also simultaneously estimating all the $s_n$ values would still be very well behaved.
+It might require a small restructuring of the code, because the star $m$ would now have not 55 parameters, but instead $55+N$, where $N$ is the size of the set $\mathscr{S}_m$.
+
+\paragraph{Don't estimate the epoch spectra at all}
+Here's my most radical suggestion: Instead of providing an estimate $\hat{b}_n$ for every window $n$---each of which would naturally be produced by an inference involving a poorly conditioned matrix pseudo-inverse or \texttt{lstsq} operation---provide instead the \emph{inputs to that inference}.
+That is, release the epoch spectra by releasing the $y_n$ and an interface to generate the projection operators $\hat{A}(\alpha_n)$ appropriate for each of those epoch spectra.
+Is this dereliction of duty? No! Provided that the project provides a usable interface for performing inferences or operations with the epoch spectra.
+For example: Imagine that a star flares. This flare can be found by comparing each epoch datum $y_n$ for $n\in\mathscr{S}_m$ to the synthesis from the mean spectrum estimate $\hat{b}_m$:
+\begin{align}
+    \hat{Delta}_n = y_n - \hat{A}(\alpha_n)\cdot B(\delta_n)\cdot \hat{b}_m ~,
+\end{align}
+where (in my imagination), the operators $\hat{A}(\alpha_n)$ and $B(\delta_n)$ will be provided by a Gaia-hosted or Gaia-built interface similar to \texttt{GaiaXPy},
+and the $\hat{Delta}_n$ gets a hat because it is an estimate of the residual at the epoch.
+For another: Imagine that there is a periodic variation with a period $P=2\pi/\omega$.
+The (complex) varying spectral component $b'_m$ can be estimated with something like the likelihood function \eqref{eq:lf1} through \eqref{eq:lf2} but with \eqref{eq:lf2} modified to
+\begin{align}
+    \Delta_n &= y_n - \hat{A}(\alpha_n)\cdot B(\delta_n)\cdot [b_m + b'_m\,\exp{i\,\omega\,t_n}] ~,
+\end{align}
+where we have used the window times $t_n$ explicitly here and taken the real part implicitly.
+Once again, we assume that the operators $\hat{A}(\alpha_n)$ and $B(\delta_n)$ will be provided by a Gaia-hosted or Gaia-built interface.
 
 \end{document}
