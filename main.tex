@@ -6,7 +6,7 @@
 
 \title{\bfseries
 A letter to \textsl{Gaia} DPAC CU5 regarding XP spectral extraction%
-\footnote{This document was written after a meeting with Francesca di~Angeli, Dafydd Wyn Evans, Giorgia Busso, and Marco Riello (all \textsl{Gaia} CU5) in Cambridge, UK on 2023 May 19. That meeting itself was part of the 2023 \textsl{Gaia XPloration} meeting hosted by the Institute of Astronomy, University of Cambridge.}}
+\footnote{This document was written after a meeting with Francesca De~Angeli, Dafydd Wyn Evans, Giorgia Busso, and Marco Riello (all \textsl{Gaia} CU5) in Cambridge, UK on 2023 May 19. That meeting itself was part of the 2023 \textsl{Gaia XPloration} meeting hosted by the Institute of Astronomy, University of Cambridge.}}
 \author{David W. Hogg%
 \footnote{Affiliations: Center for Cosmology and Particle Physics, Department of Physics, New York University; Max-Planck-Institut f\"ur Astronomie, Heidelberg; Flatiron Institute, a division of the Simons Foundation. Also: Member of \textsl{Gaia} DPAC CU9.}}
 \date{May 2023}
@@ -29,9 +29,13 @@ A letter to \textsl{Gaia} DPAC CU5 regarding XP spectral extraction%
 
 \maketitle\thispagestyle{empty}
 
-\begin{abstract}\noindent
+\paragraph{abstract}
     The purpose of this document is to rephrase the \textsl{Gaia} XP spectral self-calibration and extraction in new language, and make recommendations for the sharp bits.
-\end{abstract}
+    My strongest recommendations are the following:
+    Consider reparamaterizing (what I call) the $A(\alpha)$ matrix function.
+    Explicitly force the spectra to be extracted at the mean system.
+    Estimate not the individual-epoch spectra but the \emph{differences} between the epoch spectra and the mean spectra.
+    Consider not estimating individual-epoch spectra \emph{at all}.
 
 \section{Problem setup in my language}
 
@@ -62,6 +66,7 @@ the vectors $y_n$ and $b_m$ are column vectors ($60\times 1$ and $55\times 1$ ma
 and the term ``$+\mbox{noise}$'' is intended to indicate that there are small offsets created by photon noise and other variabilities, but no systematic biases (in this magical, hypothetical world).
 That is, the spectral coefficients $b_m$ parameterize the appearance of the spectrum directly in the data, not some kind of calibrated or renormalized or deconvolved spectrum.
 Another way to say it is that \emph{the spectra we extract here will be attenuated, pixel-convolved, LSF-convolved effective spectra, extracted at the fundamental resolution and throughput of the device}.
+They will not be continuum-normalized, nor will they be aboslutely calibrated.
 
 \section{Assumptions}
 
@@ -123,7 +128,7 @@ That is, learn an estimate $\hat{A}(\alpha)$ of the matrix-valued function $A(\a
 Deliver an estimate $\hat{b}_m$ of the spectral coefficient 55-vector representing the mean spectrum for (every) star $m$, by fitting to all the windows $m\in\mathscr{S}_m$. Also deliver some kind of uncertainty estimate on this.
 
 \paragraph{Extract epoch spectra}
-Deliver (in some useable form) an estimate of every individual visit spectrum $\hat{b}_n$, one per telemetered window $n$ (that meets criteria). Also deliver some kind of uncertainty estimate.
+Deliver (in some usable form) an estimate of every individual visit spectrum $\hat{b}_n$, one per telemetered window $n$ (that meets criteria). Also deliver some kind of uncertainty estimate.
 
 \medskip
 
@@ -137,14 +142,15 @@ The ``$+\mbox{noise}$'' in \eqref{eq:A} effectively implies a simple Gaussian li
 \end{align}
 where we have defined a per-window chi-squared value $\chi^2_n$,
 we have defined a single-window 60-vector residual $\Delta_n$,
-and $C_n$ is a $60\times 60$ noise covariance tensor for window $n$, perhaps quite accurately diagonal.
+and $C_n$ is a $60\times 60$ noise covariance tensor for window $n$ which is assumed to be known and perhaps quite accurately diagonal.
 
 Related to the three high-level problems stated above, I see many inter-related technical issues that are likely to arise:
 
 \paragraph{Choice or control of the fiducial system}
 The extracted spectra are supposed to look like the spectra in the data; that is, they are supposed to be at XP resolution and dispersion, with a shape that represents the system throughput.
-Since throughput, dispersion, and resolution vary with across-scan location (and FOV and focus and so on), the question arises:
-What is the fiducial throughput, resolution, and dispersion at which the spectra are extracted?
+But at the same time, the throughput, dispersion, and resolution vary with across-scan location (and FOV and focus and so on).
+Thus the question arises:
+What is the fiducial throughput, resolution, and dispersion at which the spectra are to be extracted?
 This question boils down to:
 Where (if anywhere) in the device or dataset is the projection operator $A(\alpha)$ equal to the $60\times 60$ identity matrix $\mathbb{I}$?
 It could be that there is a fiducial setting of the housekeeping data $\alpha_\ast$ such that $A(\alpha_\ast)=\mathbb{I}$, or it could be that some average or mean instrument has
@@ -163,7 +169,7 @@ The expression \eqref{eq:A} contains a panoply of degeneracies, many of them exa
 The fact that the projection operator $A(\alpha)$ has (in principle) 3600 free parameters while the extracted spectrum has only 55 free parameters means that there will be an enormous degeneracy, even with strong constraints on how $A(\alpha)$ can vary with $\alpha$ and pixel number.
 Concretely, for example, the $A(\alpha)$ can be scaled up by a factor, and $b$ down by a factor to keep the prediction for $y$ unchanged.
 For another example, the projector can get sharper (scaled up in some parts of Fourier space) and the spectrum can get smoother (scaled down in those same parts of Fourier space), to keep the prediction for $y$ unchanged.
-Naively one might expect that the choice of the fiducial system will break these degeneracies, since it sets the value of $A(\alpha_\ast)$, but that isn't necessarily true \emph{in practice} when most of the windows $n\in\mathscr{S}_m$ are not near the fiducial system.
+Naively one might expect that the choice of the fiducial system will break these degeneracies, since it sets the value of $A(\alpha_\ast)$, but that isn't necessarily true \emph{in practice} when none of the windows $n\in\mathscr{S}_m$ are precisely at the fiducial system.
 
 \paragraph{Stability of inference}
 When individual-visit spectrum estimates $\hat{b}_n$ are made, they will probably involve something like the optimization of a 55-parameter likelihood function constrained by only 60 data points in window $n$, or maybe the pseudo-inverse of a $60\times 55$ matrix that is something like the product $A(\alpha_n)\cdot B(\delta_n)$.
@@ -178,7 +184,7 @@ My primary (unsolicited) recommendation is that the estimates $\hat{A}(\alpha), 
 And, indeed, this is what I believe that CU5 is doing right now.
 
 Alternatively, the estimates $\hat{A}(\alpha), \hat{b}_m, \hat{b}_n$ could be found by optimizing a lightly regularized version of the likelihood, but I would recommend that any regularization primarily be aimed at breaking degeneracies, and not strongly constraining the solution.
-Finally, if there \emph{are} strong regularizations to be applied, those strong regularizations should be only on the properties of the projection operator function $A(\alpha)$, because this is the part of the problem that we least care about (from an astronomical-research perspective), and thus least distorts downstream research conclusions.
+Finally, if there \emph{are} strong regularizations to be applied, those strong regularizations should be only on the properties of the projection operator function $A(\alpha)$, because this is the part of the problem that we least care about (from an astronomical-research perspective), and thus the part that least distorts downstream research conclusions.
 
 \paragraph{Cubics and other polynomials}
 The XP pipeline currently involves a few (maybe many) cubic polynomials.
@@ -198,7 +204,7 @@ However, the construction of design matrices analogous to those used in polynomi
 So I usually prefer sines and cosines to splines with knots.
 
 \paragraph{How to parameterize the projection operator function}
-The projection operator function $A(\alpha)$ in principle has a huge number of degrees of freedom; how to limit them?
+The projection operator function $A(\alpha)$ in principle has a huge number of degrees of freedom (technically it is composed of 3600 real-valued functions of $\alpha$); how to limit them?
 Right now I believe that CU5 makes the projection matrix 5-diagonal, with the matrix values restricted to be cubic functions of across-scan position within each CCD row.
 I believe that they also require that the matrix entries be smooth with respect to the matrix row number (or window along-scan pixel number).
 Instead of this, I would consider making some kind of expansion, such that the matrix $A(\alpha)$ can be written in terms of a sum of (small, we hope) adjustments away from the $60\times 60$ identity matrix $\mathbb{I}$.
@@ -212,15 +218,18 @@ I love this idea!
 However, I have to admit that I have absolutely no idea how to set the $A_j$ matrices.
 One option would be to learn them simultaneously with the amplitudes $a_j$ and also the spectra.
 Another option would be to make a God-given basis of $A_j$ matrices (analogous to the $B(\delta)$ basis), where that God-given basis is designed to capture the observed variation in the $A(\alpha_n)$ matrices that have been inferred from the \textsl{Gaia} DR3 XP data extraction.
+That is, use what was learned in DR3 to set the freedom of $A(\alpha)$ for DR4.
 
 My intuition is that this kind of expansion for the projection operators is a much better way to control the complexity than hard-setting the matrices to be 5-diagonal.
 I have a further (weaker) intuition that if this expansion was built well, smoothness might not need to be enforced as strongly in the parameterization of the amplitudes $a_j(\alpha)$ as it is currently in the parameterization of the 5-diagonal setup.
 
 \paragraph{Controlling the fiducial system}
 My current understanding is that the CU5 system intends for the fiducial system to be somehow the ``mean'' system.
-But I have a feeling that this is a hope for the code, and not an explicit requirement put on the code.
+But I have a feeling that this is a \emph{hope} for the code, and not an explicit requirement put on the code.\footnote{If my feeling is correct here, fixing this might just fix the problem I heard about in which the estimated spectra get smoother with each iteration.}
 If you want to require this, you could add a regularization penalty or explicit hard constraint on the optimization that enforces that the average (mean or median even) of $A(\alpha_n)$ over some set of windows $n$ (maybe all of them) is exactly the $60\times 60$ identity matrix $\mathbb{I}$.
-Alternatively the system could constrain a constraint or regularization that forces $A(\alpha_\ast)=\mathbb{I}$ for some particular window location and spacecraft state $\alpha_\ast$.
+This could be enforced as a step in the current iterative scheme (I think I know how; it involves taking the average of the $A(\alpha_n)$ and using that to readjust all the $\hat{b}_m$ vectors before re-inferring the function $A(\alpha)$ in the next iteration, or something like that).
+Alternatively the system could add a constraint or regularization that forces $A(\alpha_\ast)=\mathbb{I}$ for some particular window location and spacecraft state $\alpha_\ast$.
+
 I have two intuitions here.
 The first is that it is important to be explicit about where and how the fiducial system is defined and force the optimization to respect that choice.
 The second is that it will be more robust to set the fiducial system with some kind of average than by setting it to a fiducial point.
@@ -229,7 +238,7 @@ The reason that I think the mean system will be more robust is that it gets cont
 
 \paragraph{Degeneracies}
 As noted above, there are many exact and near-exact degeneracies in this problem.
-The thing I'm confused about is: If you set the fiducial system explicitly, do you break all of them?
+The thing I'm confused about them is this: If you set the fiducial system explicitly, do you break all of them?
 I somehow feel like you don't!
 But then I can't find any simple degeneracies that survive (at least not by pure thought).
 
@@ -255,13 +264,13 @@ $N_m$ is the number of relevant windows or the size of the set $\mathscr{S}_m$,
 $C_m$ is a big diagonal $60\,N_m\times 60\,N_m$ covariance matrix made by clicking together all the individually diagonal covariance matrices $C_n$,
 and $Y_m$ is a big $60\,N_m\times 1$ column vector made by stacking all the data vectors $y_n$.
 
-Note that the estimate $\hat{b}_m$ should be made without ever explicitly constructing $C_m$, because that covariance matrix is almost entirely zeros.
-It should also be made without ever actually running the linear algebra \texttt{inv()} function.
+Note that the estimate $\hat{b}_m$ should be made without ever explicitly constructing the full matrix $C_m$, because that covariance matrix is almost entirely zeros; the code should only ever refer to the diagonal of that matrix.
+The estimate should also be made without ever actually running the linear algebra \texttt{inv()} function.
 It is way better to use the function \texttt{solve()} or even better \texttt{lstsq()}, where in the latter case you can set the condition number to eliminate very-near-zero eigenvalues.
 
 If you want to estimate the individual epoch spectra $\hat{b}_n$---but see below where \emph{I recommend that you never estimate these}---the inference looks similar; it is
 \begin{align}
-  \hat{b}_n &\leftarrow [X_n^\top\cdot C_n^{-1}\cdot X_n]^{-1}\cdot X_n^\top\cdot C_n^{-1}\cdot Y_n\\
+  \hat{b}_n &\leftarrow [X_n^\top\cdot C_n^{-1}\cdot X_n]^{-1}\cdot X_n^\top\cdot C_n^{-1}\cdot y_n\label{eq:hatbn}\\
   X_n &= A(\alpha_n)\cdot B(\delta_n)~.
 \end{align}
 In principle everything is just the same.
@@ -271,6 +280,17 @@ Another is to explicitly fix low eigenvalues, by using the \texttt{lstsq()} inst
 This also is equivalent to adding some kind of prior, but without knowing what that prior is!
 I don't love either option here, because stability of inference will come at the cost of bias, and astronomers hate bias.
 All this motivates my final, radical suggestion, below.
+
+But before I make that radical suggestion, let me say, vaguely, the following thing:
+If you \emph{do} want to estimate the individual epoch spectra, and you \emph{do} want to regularize, the thing you want to do is not the usual thing of fixing low eigenvalues in the inference for $\hat{b}_n$.
+You want to fix low eigenvalues in the \emph{inference of the difference} $\hat{b}_n - \hat{b}_m$.
+That is, you should run the regularized inference not on the data $y_n$ but rather on the difference between $y_n$ and the synthesis of $y_n$ using the reported mean spectrum $\hat{b}_m$.
+that looks like \eqref{eq:hatbn}, but with $y_n$ replaced by
+\begin{align}
+    [y_n - \hat{A}(\alpha_n)\cdot B(\delta_n)\cdot \hat{b}_m] ~,
+\end{align}
+where some of the things have hats because they are the outputs of the prior inferences.
+That is, \emph{don't estimate the epoch spectra, estimate the differences between the epoch spectra and the mean spectra!}
 
 \paragraph{Don't estimate the epoch spectra at all}
 Here's my most radical suggestion: Instead of providing an estimate $\hat{b}_n$ for every window $n$---each of which would naturally be produced by an inference involving a poorly conditioned matrix pseudo-inverse or \texttt{lstsq()} operation---provide instead the \emph{inputs to that inference}.
@@ -295,5 +315,13 @@ My point is that even if the individual-epoch $\hat{b}_n$ estimation is unstable
 
 If the project switched from the goal of producing spectral estimates $\hat{b}_n$ for each window $n$ to releasing the raw data $y_n$ and the operators $A(\alpha_n)$ and $B(\delta_n)$, then it would make sense to build some tutorials and documentation to demonstrate to the community how to use these data products.
 I would be very willing to help make, write, and test such tutorials and documentation.
+
+\paragraph{Choose science goals}
+I recognize that the XP spectral data are supposed to serve a huge and diverse community.
+However, it is way easier to decide what trades to make here if you have fairly specific goals in mind.
+I think it makes sense to choose a few very different scientific goals (preferably important, ambitious, real goals) that people have for the individual-epoch spectra, and make sure that whatever you choose to do is consistent with those chosen science cases.
+This is more true the more restrictive your choices are.
+If you choose not to do individual-epoch inferences, but you release all the necessary inputs, then you have not restricted downstream scientific choices in any way, by construction. You are making almost no choices!
+If you instead choose to do individual-epoch inferences, you have to make choices; it is easier to make those choices with particular scientific use cases in mind.
 
 \end{document}
